@@ -1,0 +1,3228 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wordle Challenge - Telegram Game</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            /* Colors */
+            --primary-color: #6aaa64;
+            --primary-dark: #5a9954;
+            --secondary-color: #c9b458;
+            --secondary-dark: #b9a448;
+            --accent-color: #787c7e;
+            --accent-dark: #686c6e;
+            --telegram-blue: #0088cc;
+            --telegram-dark: #17212b;
+            
+            /* Backgrounds */
+            --bg-primary: #121213;
+            --bg-secondary: #1a1a1b;
+            --bg-tertiary: #2a2a2b;
+            --bg-modal: rgba(0, 0, 0, 0.9);
+            
+            /* Text */
+            --text-primary: #ffffff;
+            --text-secondary: #d7dadc;
+            --text-muted: #818384;
+            
+            /* Borders */
+            --border-color: #3a3a3c;
+            --border-light: #4a4a4c;
+            
+            /* Game Colors */
+            --tile-default: var(--bg-secondary);
+            --tile-correct: var(--primary-color);
+            --tile-present: var(--secondary-color);
+            --tile-absent: var(--accent-color);
+            
+            /* Spacing */
+            --spacing-xs: 4px;
+            --spacing-sm: 8px;
+            --spacing-md: 16px;
+            --spacing-lg: 24px;
+            --spacing-xl: 32px;
+            
+            /* Border Radius */
+            --radius-sm: 4px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --radius-xl: 16px;
+            
+            /* Shadows */
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+            --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+            
+            /* Transitions */
+            --transition-fast: 0.15s ease;
+            --transition-normal: 0.3s ease;
+            --transition-slow: 0.5s ease;
+        }
+
+        .light-theme {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f6f7f8;
+            --bg-tertiary: #e3e3e3;
+            --bg-modal: rgba(255, 255, 255, 0.95);
+            
+            --text-primary: #000000;
+            --text-secondary: #5f6368;
+            --text-muted: #9aa0a6;
+            
+            --border-color: #d3d6da;
+            --border-light: #e3e6ea;
+            
+            --tile-default: var(--bg-secondary);
+            --tile-correct: var(--primary-color);
+            --tile-present: var(--secondary-color);
+            --tile-absent: var(--accent-color);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.5;
+            overflow-x: hidden;
+            transition: background-color var(--transition-normal), color var(--transition-normal);
+        }
+
+        .app-container {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--spacing-md);
+            border-bottom: 1px solid var(--border-color);
+            background-color: var(--bg-primary);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            text-align: center;
+            flex: 1;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .btn-icon {
+            background: var(--bg-secondary);
+            border: none;
+            color: var(--text-primary);
+            padding: var(--spacing-sm);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 44px;
+            min-height: 44px;
+        }
+
+        .btn-icon:hover {
+            background: var(--bg-tertiary);
+            transform: translateY(-1px);
+        }
+
+        .btn-icon:active {
+            transform: translateY(0);
+        }
+
+        /* Game Info */
+        .game-info {
+            display: flex;
+            justify-content: center;
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
+            flex-wrap: wrap;
+            padding: 0 var(--spacing-md);
+        }
+
+        .daily-badge {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .friend-indicator {
+            background: linear-gradient(135deg, #4ecdc4, #44a08d);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Main Game */
+        .main-game {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: var(--spacing-lg);
+            gap: var(--spacing-xl);
+            justify-content: center;
+        }
+
+        .game-board {
+            display: grid;
+            grid-template-rows: repeat(6, 1fr);
+            gap: var(--spacing-sm);
+            width: min(95%, 350px);
+            aspect-ratio: 5/6;
+            margin: 0 auto;
+        }
+
+        .board-row {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: var(--spacing-sm);
+        }
+
+        .tile {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: 700;
+            background-color: var(--tile-default);
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            text-transform: uppercase;
+            transition: all var(--transition-normal);
+            position: relative;
+            overflow: hidden;
+            user-select: none;
+            aspect-ratio: 1;
+        }
+
+        .tile::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            transition: left 0.5s;
+        }
+
+        .tile:hover::before {
+            left: 100%;
+        }
+
+        .tile.filled {
+            border-color: var(--text-muted);
+            animation: popIn 0.1s ease;
+        }
+
+        .tile.correct {
+            background-color: var(--tile-correct);
+            border-color: var(--tile-correct);
+            color: white;
+            animation: flipIn 0.6s ease;
+        }
+
+        .tile.present {
+            background-color: var(--tile-present);
+            border-color: var(--tile-present);
+            color: white;
+            animation: flipIn 0.6s ease;
+        }
+
+        .tile.absent {
+            background-color: var(--tile-absent);
+            border-color: var(--tile-absent);
+            color: white;
+            animation: flipIn 0.6s ease;
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes flipIn {
+            0% { 
+                transform: rotateX(0); 
+                background-color: var(--tile-default);
+                border-color: var(--border-color);
+            }
+            50% { 
+                transform: rotateX(90deg);
+                background-color: var(--tile-default);
+                border-color: var(--border-color);
+            }
+            100% { 
+                transform: rotateX(0); 
+            }
+        }
+
+        /* Virtual Keyboard */
+        .virtual-keyboard {
+            width: min(95%, 500px);
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-sm);
+        }
+
+        .keyboard-row {
+            display: flex;
+            justify-content: center;
+            gap: var(--spacing-sm);
+        }
+
+        .key {
+            flex: 1;
+            min-height: 58px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            text-transform: uppercase;
+            user-select: none;
+            touch-action: manipulation;
+        }
+
+        .key:hover {
+            background-color: var(--bg-tertiary);
+            transform: translateY(-2px);
+        }
+
+        .key:active {
+            transform: translateY(0);
+        }
+
+        .key.wide {
+            flex: 1.5;
+            font-size: 0.8rem;
+        }
+
+        .key.correct {
+            background-color: var(--tile-correct);
+            color: white;
+        }
+
+        .key.present {
+            background-color: var(--tile-present);
+            color: white;
+        }
+
+        .key.absent {
+            background-color: var(--tile-absent);
+            color: white;
+        }
+
+        /* Start Screen */
+        .start-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .start-screen.active {
+            display: flex;
+        }
+
+        .start-content {
+            text-align: center;
+            padding: var(--spacing-xl);
+        }
+
+        .welcome-card {
+            background: var(--bg-secondary);
+            padding: var(--spacing-xl);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border-color);
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .welcome-title {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: var(--spacing-sm);
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .welcome-subtitle {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .welcome-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+        }
+
+        /* Buttons */
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            color: white;
+            border: none;
+            padding: var(--spacing-md) var(--spacing-lg);
+            border-radius: var(--radius-lg);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--transition-normal);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--spacing-sm);
+            text-decoration: none;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: var(--spacing-md) var(--spacing-lg);
+            border-radius: var(--radius-lg);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--transition-normal);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--spacing-sm);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border-color);
+            transform: translateY(-2px);
+        }
+
+        .menu-btn {
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            padding: var(--spacing-md);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            width: 100%;
+            text-align: left;
+            font-size: 1rem;
+        }
+
+        .menu-btn:hover {
+            background: var(--bg-tertiary);
+        }
+
+        /* Sidebar Menu */
+        .sidebar-menu {
+            position: fixed;
+            top: 0;
+            right: -400px;
+            width: 100%;
+            max-width: 380px;
+            height: 100vh;
+            background: var(--bg-primary);
+            border-left: 1px solid var(--border-color);
+            box-shadow: var(--shadow-lg);
+            transition: right var(--transition-normal);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-menu.active {
+            right: 0;
+        }
+
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--spacing-lg);
+            border-bottom: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+        }
+
+        .sidebar-header h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .btn-close {
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: var(--spacing-sm);
+            border-radius: var(--radius-sm);
+            transition: background var(--transition-fast);
+        }
+
+        .btn-close:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            padding: var(--spacing-md);
+            border-bottom: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+        }
+
+        .nav-item {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            padding: var(--spacing-md);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            font-size: 1rem;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .nav-item:hover {
+            color: var(--text-primary);
+            background: var(--bg-tertiary);
+        }
+
+        .nav-item.active {
+            color: var(--primary-color);
+            background: var(--bg-tertiary);
+            font-weight: 600;
+        }
+
+        .nav-icon {
+            font-size: 1.25rem;
+            width: 24px;
+            text-align: center;
+        }
+
+        .tab-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: var(--spacing-lg);
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .tab-panel {
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Challenge List */
+        .challenges-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+            margin-top: var(--spacing-md);
+        }
+
+        .challenge-item {
+            background: var(--bg-secondary);
+            padding: var(--spacing-md);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .challenge-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .challenge-word {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .challenge-stats {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .challenge-actions {
+            display: flex;
+            gap: var(--spacing-sm);
+        }
+
+        /* Leaderboard */
+        .leaderboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .time-filter {
+            display: flex;
+            gap: 4px;
+            background: var(--bg-secondary);
+            padding: 4px;
+            border-radius: var(--radius-md);
+        }
+
+        .filter-btn {
+            background: none;
+            border: none;
+            padding: 6px 12px;
+            border-radius: var(--radius-sm);
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+
+        .filter-btn.active {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .leaderboard-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-sm);
+        }
+
+        .leaderboard-item {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            padding: var(--spacing-md);
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-color);
+        }
+
+        .leaderboard-rank {
+            width: 24px;
+            text-align: center;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .rank-1 { color: gold; }
+        .rank-2 { color: silver; }
+        .rank-3 { color: #cd7f32; }
+
+        .leaderboard-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .leaderboard-info {
+            flex: 1;
+        }
+
+        .leaderboard-name {
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .leaderboard-stats {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .leaderboard-rating {
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+
+        /* Friends List */
+        .friends-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+            margin-top: var(--spacing-lg);
+        }
+
+        .friend-item {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            padding: var(--spacing-md);
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-color);
+        }
+
+        .friend-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .friend-info {
+            flex: 1;
+        }
+
+        .friend-name {
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .friend-status {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .status-online {
+            color: var(--primary-color);
+        }
+
+        .status-playing {
+            color: var(--secondary-color);
+        }
+
+        .friend-action {
+            background: var(--bg-tertiary);
+            border: none;
+            color: var(--text-primary);
+            padding: 6px 12px;
+            border-radius: var(--radius-sm);
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: background var(--transition-fast);
+        }
+
+        .friend-action:hover {
+            background: var(--border-color);
+        }
+
+        /* Challenge Link */
+        .challenge-link-container {
+            display: flex;
+            gap: var(--spacing-sm);
+            margin: var(--spacing-lg) 0;
+        }
+
+        .share-actions {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-sm);
+        }
+
+        .telegram-share-btn {
+            background: linear-gradient(135deg, #0088cc, #006699);
+        }
+
+        /* Stats Cards */
+        .stats-cards {
+            margin: var(--spacing-lg) 0;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-md);
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            padding: var(--spacing-lg);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .stats-grid-large {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .stat-card-large {
+            background: var(--bg-secondary);
+            padding: var(--spacing-lg);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        .stat-card-large .stat-value {
+            font-size: 2.5rem;
+        }
+
+        /* Profile Section */
+        .profile-card {
+            background: var(--bg-secondary);
+            padding: var(--spacing-lg);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-color);
+            margin-bottom: var(--spacing-xl);
+            text-align: center;
+        }
+
+        .avatar-container {
+            position: relative;
+            display: inline-block;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            margin: 0 auto;
+        }
+
+        .level-badge {
+            position: absolute;
+            bottom: -5px;
+            right: -5px;
+            background: var(--primary-color);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .user-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .user-username {
+            color: var(--text-muted);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .profile-stats {
+            display: flex;
+            justify-content: center;
+            gap: var(--spacing-lg);
+            flex-wrap: wrap;
+        }
+
+        .profile-stat {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            color: var(--text-secondary);
+        }
+
+        .progress-section {
+            background: var(--bg-secondary);
+            padding: var(--spacing-lg);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-color);
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-sm);
+            font-size: 0.9rem;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-bar.small {
+            height: 6px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border-radius: 4px;
+            transition: width var(--transition-slow);
+        }
+
+        /* Word Input */
+        .word-input-container {
+            margin-bottom: var(--spacing-md);
+        }
+
+        .word-input {
+            width: 100%;
+            padding: var(--spacing-md);
+            background: var(--bg-secondary);
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-size: 1.1rem;
+            text-align: center;
+            text-transform: uppercase;
+            transition: border-color var(--transition-fast);
+        }
+
+        .word-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .input-hint {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: var(--spacing-xs);
+            text-align: center;
+        }
+
+        .link-section {
+            background: var(--bg-secondary);
+            padding: var(--spacing-lg);
+            border-radius: var(--radius-lg);
+            margin-bottom: var(--spacing-xl);
+            border: 1px solid var(--border-color);
+        }
+
+        .link-container {
+            display: flex;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .link-input {
+            flex: 1;
+            padding: var(--spacing-md);
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-size: 0.9rem;
+        }
+
+        .btn-copy {
+            background: var(--bg-tertiary);
+            border: none;
+            color: var(--text-primary);
+            padding: var(--spacing-md);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: background var(--transition-fast);
+        }
+
+        .btn-copy:hover {
+            background: var(--border-color);
+        }
+
+        .share-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-sm);
+        }
+
+        /* Modals */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-modal);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            padding: var(--spacing-md);
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--bg-primary);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border-color);
+            width: 100%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--spacing-lg);
+            border-bottom: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+        }
+
+        .modal-header h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .modal-body {
+            padding: var(--spacing-lg);
+        }
+
+        /* Instructions */
+        .instruction-step {
+            display: flex;
+            gap: var(--spacing-lg);
+            margin-bottom: var(--spacing-xl);
+            align-items: flex-start;
+        }
+
+        .step-number {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .step-content h4 {
+            margin-bottom: var(--spacing-sm);
+            font-size: 1.2rem;
+        }
+
+        .color-examples {
+            display: flex;
+            gap: var(--spacing-lg);
+            margin: var(--spacing-md) 0;
+            flex-wrap: wrap;
+        }
+
+        .color-example {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .example-tile {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius-sm);
+            font-weight: 700;
+            font-size: 1.2rem;
+        }
+
+        .example-tile.correct {
+            background-color: var(--tile-correct);
+            color: white;
+        }
+
+        .example-tile.present {
+            background-color: var(--tile-present);
+            color: white;
+        }
+
+        .example-tile.absent {
+            background-color: var(--tile-absent);
+            color: white;
+        }
+
+        .example-word {
+            margin: var(--spacing-md) 0;
+        }
+
+        .example-row {
+            display: flex;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-md);
+            justify-content: center;
+        }
+
+        /* Distribution */
+        .distribution-section {
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .distribution-bars {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-sm);
+        }
+
+        .distribution-bar {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+        }
+
+        .distribution-label {
+            width: 20px;
+            font-weight: 600;
+        }
+
+        .distribution-progress {
+            flex: 1;
+            height: 24px;
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .distribution-fill {
+            height: 100%;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border-radius: var(--radius-sm);
+            transition: width 1s ease;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding: 0 var(--spacing-sm);
+            color: white;
+            font-size: 0.8rem;
+            font-weight: 600;
+            min-width: 30px;
+        }
+
+        /* Message Modal */
+        .message-modal {
+            text-align: center;
+        }
+
+        .message-header {
+            padding: var(--spacing-xl);
+            border-bottom: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+        }
+
+        .message-body {
+            padding: var(--spacing-xl);
+        }
+
+        .message-word {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin: var(--spacing-lg) 0;
+            text-transform: uppercase;
+        }
+
+        .game-result-share {
+            margin-top: var(--spacing-xl);
+            padding-top: var(--spacing-lg);
+            border-top: 1px solid var(--border-color);
+        }
+
+        .share-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--spacing-sm);
+            margin-top: var(--spacing-md);
+        }
+
+        .share-option {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: var(--spacing-xs);
+        }
+
+        .share-option:hover {
+            background: var(--bg-tertiary);
+            transform: translateY(-2px);
+        }
+
+        .share-icon {
+            font-size: 1.5rem;
+        }
+
+        .share-text {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .message-footer {
+            padding: var(--spacing-lg);
+            border-top: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+        }
+
+        /* Notification */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--primary-color);
+            color: white;
+            padding: var(--spacing-md) var(--spacing-lg);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            z-index: 3000;
+            transform: translateX(400px);
+            transition: transform var(--transition-normal);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.error {
+            background: #e74c3c;
+        }
+
+        .notification.success {
+            background: var(--primary-color);
+        }
+
+        /* Premium badges */
+        .premium-badge {
+            background: linear-gradient(135deg, #ffd700, #ffed4e);
+            color: #8c6d1f;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            margin-left: 8px;
+        }
+
+        /* Animation improvements */
+        @keyframes bounceIn {
+            0% { transform: scale(0.3); opacity: 0; }
+            50% { transform: scale(1.05); }
+            70% { transform: scale(0.9); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .bounce-in {
+            animation: bounceIn 0.6s ease;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .header {
+                padding: var(--spacing-sm);
+            }
+            
+            .logo {
+                font-size: 1.5rem;
+            }
+            
+            .main-game {
+                padding: var(--spacing-md);
+                gap: var(--spacing-lg);
+            }
+            
+            .game-board {
+                width: 100%;
+                max-width: 320px;
+            }
+            
+            .tile {
+                font-size: 1.5rem;
+            }
+            
+            .key {
+                min-height: 50px;
+                font-size: 0.9rem;
+            }
+            
+            .sidebar-menu {
+                max-width: 100%;
+                right: -100%;
+            }
+            
+            .welcome-card {
+                margin: var(--spacing-md);
+                padding: var(--spacing-lg);
+            }
+            
+            .welcome-title {
+                font-size: 2.5rem;
+            }
+            
+            .stats-grid-large {
+                grid-template-columns: 1fr;
+            }
+            
+            .color-examples {
+                flex-direction: column;
+                align-items: center;
+                gap: var(--spacing-md);
+            }
+            
+            .share-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .leaderboard-header {
+                flex-direction: column;
+                gap: var(--spacing-md);
+                align-items: stretch;
+            }
+            
+            .time-filter {
+                justify-content: center;
+            }
+            
+            .challenge-item {
+                flex-direction: column;
+                gap: var(--spacing-md);
+                align-items: stretch;
+            }
+            
+            .challenge-actions {
+                justify-content: center;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .modal-content {
+                margin: var(--spacing-sm);
+            }
+            
+            .modal-body {
+                padding: var(--spacing-md);
+            }
+            
+            .instruction-step {
+                flex-direction: column;
+                text-align: center;
+                gap: var(--spacing-md);
+            }
+            
+            .profile-stats {
+                flex-direction: column;
+                gap: var(--spacing-md);
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Animation for shake */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+
+        .shake {
+            animation: shake 0.5s ease;
+        }
+
+        /* Focus styles for accessibility */
+        button:focus-visible,
+        input:focus-visible {
+            outline: 2px solid var(--primary-color);
+            outline-offset: 2px;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <button class="btn-icon menu-toggle" id="menuBtn">
+                <span class="icon">☰</span>
+            </button>
+            <h1 class="logo">WORDLE</h1>
+            <button class="btn-icon stats-toggle" id="statsBtn">
+                <span class="icon">📊</span>
+            </button>
+        </header>
+
+        <!-- Main Game -->
+        <main class="main-game">
+            <div class="game-info">
+                <div class="daily-badge" id="dailyBadge">Ежедневное слово</div>
+                <div class="friend-indicator" id="friendIndicator" style="display: none;">
+                    <span class="friend-icon">👥</span>
+                    Слово друга
+                </div>
+            </div>
+            <div class="game-board" id="gameBoard"></div>
+            <div class="virtual-keyboard" id="keyboard"></div>
+        </main>
+
+        <!-- Start Screen -->
+        <div class="start-screen active" id="startScreen">
+            <div class="start-content">
+                <div class="welcome-card">
+                    <h1 class="welcome-title">WORDLE</h1>
+                    <p class="welcome-subtitle">Угадай слово из 5 букв за 6 попыток</p>
+                    <div class="welcome-buttons">
+                        <button class="btn-primary start-game-btn" id="startGameBtn">
+                            <span class="btn-icon">🎮</span>
+                            Начать игру
+                        </button>
+                        <button class="btn-secondary how-to-play-btn" id="howToPlayBtn">
+                            <span class="btn-icon">❓</span>
+                            Как играть
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar Menu -->
+        <div class="sidebar-menu" id="sidebarMenu">
+            <div class="sidebar-header">
+                <h3>Меню</h3>
+                <button class="btn-close" id="closeMenuBtn">×</button>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <button class="nav-item active" data-tab="game">
+                    <span class="nav-icon">🎮</span>
+                    <span class="nav-text">Игра</span>
+                </button>
+                <button class="nav-item" data-tab="challenges">
+                    <span class="nav-icon">⚔️</span>
+                    <span class="nav-text">Вызовы</span>
+                </button>
+                <button class="nav-item" data-tab="profile">
+                    <span class="nav-icon">👤</span>
+                    <span class="nav-text">Профиль</span>
+                </button>
+                <button class="nav-item" data-tab="leaderboard">
+                    <span class="nav-icon">🏆</span>
+                    <span class="nav-text">Рейтинг</span>
+                </button>
+                <button class="nav-item" data-tab="friends">
+                    <span class="nav-icon">👥</span>
+                    <span class="nav-text">Друзья</span>
+                </button>
+            </nav>
+
+            <!-- Вкладка Игра -->
+            <div class="tab-content active" id="game-tab">
+                <div class="tab-panel">
+                    <button class="menu-btn" id="newGameBtn">
+                        <span class="btn-icon">🔄</span>
+                        Новая игра
+                    </button>
+                    <button class="menu-btn" id="dailyChallengeBtn">
+                        <span class="btn-icon">📅</span>
+                        Ежедневный вызов
+                    </button>
+                    <button class="menu-btn" id="howToPlayMenuBtn">
+                        <span class="btn-icon">❓</span>
+                        Как играть
+                    </button>
+                    <button class="menu-btn" id="themeBtn">
+                        <span class="btn-icon">🎨</span>
+                        Сменить тему
+                    </button>
+                </div>
+            </div>
+
+            <!-- Вкладка Вызовы -->
+            <div class="tab-content" id="challenges-tab">
+                <div class="tab-panel">
+                    <div class="challenge-section">
+                        <h4>Создать вызов</h4>
+                        <div class="word-input-container">
+                            <input type="text" id="challengeWordInput" maxlength="5" 
+                                   placeholder="Любые 5 букв" class="word-input">
+                            <div class="input-hint">Можно использовать любые комбинации букв</div>
+                        </div>
+                        <button class="btn-primary create-challenge-btn" id="createChallengeBtn">
+                            <span class="btn-icon">✨</span>
+                            Создать вызов
+                        </button>
+                    </div>
+
+                    <div class="active-challenges">
+                        <h4>Активные вызовы</h4>
+                        <div class="challenges-list" id="challengesList">
+                            <!-- Список вызовов будет здесь -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Вкладка Профиль -->
+            <div class="tab-content" id="profile-tab">
+                <div class="tab-panel">
+                    <div class="profile-card">
+                        <div class="avatar-container">
+                            <div class="avatar" id="profileAvatar">
+                                <img id="profileAvatarImg" style="display: none; width: 100%; height: 100%; border-radius: 50%;">
+                            </div>
+                            <div class="level-badge">Ур. <span id="profileLevel">1</span></div>
+                        </div>
+                        <div class="profile-info">
+                            <h3 class="user-name" id="profileName">Игрок</h3>
+                            <p class="user-username" id="profileUsername">@username</p>
+                            <div class="profile-stats">
+                                <div class="profile-stat">
+                                    <span class="stat-icon">🎮</span>
+                                    <span class="stat-text">Игр: <strong id="profileGames">0</strong></span>
+                                </div>
+                                <div class="profile-stat">
+                                    <span class="stat-icon">⭐</span>
+                                    <span class="stat-text">Рейтинг: <strong id="profileRating">1000</strong></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stats-cards">
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-value" id="profileWins">0</div>
+                                <div class="stat-label">Побед</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="profileStreak">0</div>
+                                <div class="stat-label">Серия</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="profileChallenges">0</div>
+                                <div class="stat-label">Вызовов</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="profileCompleted">0</div>
+                                <div class="stat-label">Пройдено</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="progress-section">
+                        <div class="progress-header">
+                            <span>До следующего уровня</span>
+                            <span class="progress-text" id="levelProgressText">0/100</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="levelProgressFill" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Вкладка Рейтинг -->
+            <div class="tab-content" id="leaderboard-tab">
+                <div class="tab-panel">
+                    <div class="leaderboard-header">
+                        <h4>Топ игроков</h4>
+                        <div class="time-filter">
+                            <button class="filter-btn active" data-period="daily">За день</button>
+                            <button class="filter-btn" data-period="weekly">За неделю</button>
+                            <button class="filter-btn" data-period="all">Все время</button>
+                        </div>
+                    </div>
+                    <div class="leaderboard-list" id="leaderboardList">
+                        <!-- Рейтинг будет здесь -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Вкладка Друзья -->
+            <div class="tab-content" id="friends-tab">
+                <div class="tab-panel">
+                    <div class="friends-section">
+                        <button class="btn-primary invite-friends-btn" id="inviteFriendsBtn">
+                            <span class="btn-icon">👋</span>
+                            Пригласить друзей
+                        </button>
+                        
+                        <div class="friends-stats">
+                            <div class="stats-grid">
+                                <div class="stat-card">
+                                    <div class="stat-value" id="friendsCount">0</div>
+                                    <div class="stat-label">Друзей</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-value" id="friendsPlayed">0</div>
+                                    <div class="stat-label">Играют</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="friends-list" id="friendsList">
+                            <!-- Список друзей будет здесь -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- How to Play Modal -->
+        <div class="modal-overlay" id="howToPlayModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Как играть в Wordle</h3>
+                    <button class="btn-close" id="closeHowToPlayBtn">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="instruction-step">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <h4>Угадайте слово из 5 букв</h4>
+                            <p>У вас есть 6 попыток, чтобы отгадать загаданное слово</p>
+                        </div>
+                    </div>
+
+                    <div class="instruction-step">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <h4>Смотрите на подсказки</h4>
+                            <div class="color-examples">
+                                <div class="color-example">
+                                    <div class="example-tile correct">С</div>
+                                    <span>Буква на месте</span>
+                                </div>
+                                <div class="color-example">
+                                    <div class="example-tile present">Т</div>
+                                    <span>Буква есть в слове</span>
+                                </div>
+                                <div class="color-example">
+                                    <div class="example-tile absent">О</div>
+                                    <span>Буквы нет</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="instruction-step">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <h4>Пример отгадывания</h4>
+                            <div class="example-word">
+                                <div class="example-row">
+                                    <div class="example-tile correct">С</div>
+                                    <div class="example-tile correct">Т</div>
+                                    <div class="example-tile absent">О</div>
+                                    <div class="example-tile present">Л</div>
+                                    <div class="example-tile absent">Б</div>
+                                </div>
+                            </div>
+                            <p><strong>С, Т</strong> - на своих местах</p>
+                            <p><strong>Л</strong> - есть в слове, но в другой позиции</p>
+                            <p><strong>О, Б</strong> - нет в слове</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Modal -->
+        <div class="modal-overlay" id="statsModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Статистика игры</h3>
+                    <button class="btn-close" id="closeStatsBtn">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="stats-grid-large">
+                        <div class="stat-card-large">
+                            <div class="stat-value" id="gamesPlayed">0</div>
+                            <div class="stat-label">Сыграно игр</div>
+                        </div>
+                        <div class="stat-card-large">
+                            <div class="stat-value" id="winRate">0%</div>
+                            <div class="stat-label">Процент побед</div>
+                        </div>
+                        <div class="stat-card-large">
+                            <div class="stat-value" id="currentStreak">0</div>
+                            <div class="stat-label">Текущая серия</div>
+                        </div>
+                        <div class="stat-card-large">
+                            <div class="stat-value" id="maxStreak">0</div>
+                            <div class="stat-label">Лучшая серия</div>
+                        </div>
+                    </div>
+
+                    <div class="distribution-section">
+                        <h4>Распределение попыток</h4>
+                        <div class="distribution-bars" id="distributionBars">
+                            <!-- Will be populated by JavaScript -->
+                        </div>
+                    </div>
+
+                    <button class="btn-primary share-stats-btn" id="shareStatsBtn">
+                        <span class="btn-icon">📤</span>
+                        Поделиться результатом
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Challenge Created Modal -->
+        <div class="modal-overlay" id="challengeCreatedModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Вызов создан! 🎯</h3>
+                    <button class="btn-close" id="closeChallengeModalBtn">×</button>
+                </div>
+                <div class="modal-body">
+                    <p>Отправьте ссылку друзьям, чтобы они попробовали отгадать ваше слово!</p>
+                    <div class="challenge-link-container">
+                        <input type="text" id="challengeLink" readonly class="link-input">
+                        <button class="btn-copy" id="copyChallengeLinkBtn" title="Скопировать">
+                            📋
+                        </button>
+                    </div>
+                    <div class="share-actions">
+                        <button class="btn-primary telegram-share-btn" id="shareChallengeTelegramBtn">
+                            <span class="btn-icon">📱</span>
+                            Поделиться в Telegram
+                        </button>
+                        <button class="btn-secondary" id="createAnotherChallengeBtn">
+                            Создать еще вызов
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Message Modal -->
+        <div class="modal-overlay" id="messageModal">
+            <div class="modal-content message-modal">
+                <div class="message-header">
+                    <h3 id="messageTitle">Поздравляем!</h3>
+                </div>
+                <div class="message-body">
+                    <p id="messageText">Вы угадали слово!</p>
+                    <div class="message-word" id="messageWord"></div>
+                    <div class="game-result-share" id="gameResultShare" style="display: none;">
+                        <p>Поделитесь результатом:</p>
+                        <div class="share-grid" id="shareGrid"></div>
+                    </div>
+                </div>
+                <div class="message-footer">
+                    <button class="btn-primary" id="closeMessageBtn">OK</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notification -->
+        <div class="notification" id="notification"></div>
+    </div>
+
+    <script>
+        class WordleGame {
+            constructor() {
+                this.words = this.getWordList();
+                this.targetWord = '';
+                this.currentRow = 0;
+                this.currentTile = 0;
+                this.isGameOver = false;
+                this.gameState = [];
+                this.stats = this.loadStats();
+                this.isDarkTheme = true;
+                this.challengeWord = null;
+                this.challengeId = null;
+                this.dailyWord = this.getDailyWord();
+                this.userData = {};
+                this.friends = [];
+                this.leaderboard = [];
+                
+                this.init();
+            }
+
+            init() {
+                this.createBoard();
+                this.createKeyboard();
+                this.setupEventListeners();
+                this.initTelegram();
+                this.checkChallenge();
+                this.loadFriends();
+                this.loadLeaderboard();
+                this.newGame();
+                this.updateAllDisplays();
+            }
+
+            getWordList() {
+                return [
+                    "АБЗАЦ", "АВАНС", "АВТОР", "АГЕНТ", "АДРЕС", "АКЦИЯ", "АЛЛЕЯ", "АЛМАЗ", 
+                    "АМПИР", "АНГЕЛ", "АРЕАЛ", "АРМИЯ", "АТЛАС", "БАГАЖ", "БАЗАР", "БАЛЕТ",
+                    "БАНАН", "БАНКА", "БАРИН", "БАРОН", "БАСНЯ", "БАТОН", "БЕГУН", "БЕДРО",
+                    "ЯБЛОКО", "ЯВКА", "ЯВЛЕНИЕ", "ЯГОДА", "ЯД", "ЯДРО", "ЯЗЫК", "ЯЙЦО", 
+                    "ЯКОРЬ", "ЯМА", "ЯНВАРЬ", "ЯРД", "ЯРОСТЬ", "ЯСЛИ", "ЯЩИК",
+                    "КНИГА", "СТОЛ", "СТУЛ", "ДВЕРЬ", "ОКНО", "ДОМ", "ПОЛ", "ПОТОЛ",
+                    "РУКА", "НОГА", "ГОЛОВА", "ЛИЦО", "ГЛАЗ", "УХО", "НОС", "РОТ",
+                    "ВОДА", "ЗЕМЛЯ", "ОГОНЬ", "ВОЗДУХ", "ВРЕМЯ", "МЕСТО", "РАБОТА", "ДЕНЬГИ",
+                    "ДРУГ", "ВРАГ", "ЛЮБОВЬ", "СЧАСТЬЕ", "ГОРЕ", "РАДОСТЬ", "ПЕЧАЛЬ", "ЗЛОСТЬ"
+                ];
+            }
+
+            getDailyWord() {
+                const today = new Date().toDateString();
+                const storedDate = localStorage.getItem('wordleDailyDate');
+                
+                if (storedDate === today) {
+                    return localStorage.getItem('wordleDailyWord');
+                }
+                
+                // Выбираем слово на основе даты для одинакового слова у всех игроков
+                const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
+                const dailyWord = this.words[dayOfYear % this.words.length];
+                
+                localStorage.setItem('wordleDailyDate', today);
+                localStorage.setItem('wordleDailyWord', dailyWord);
+                
+                return dailyWord;
+            }
+
+            initTelegram() {
+                if (window.Telegram && window.Telegram.WebApp) {
+                    const tg = window.Telegram.WebApp;
+                    tg.ready();
+                    tg.expand();
+                    
+                    // Set theme based on Telegram
+                    if (tg.colorScheme === 'light') {
+                        this.setLightTheme();
+                    }
+                    
+                    // Get user info with all available data
+                    const user = tg.initDataUnsafe?.user;
+                    if (user) {
+                        this.userData = {
+                            id: user.id,
+                            firstName: user.first_name,
+                            lastName: user.last_name,
+                            username: user.username,
+                            photoUrl: user.photo_url,
+                            languageCode: user.language_code,
+                            isPremium: user.is_premium || false
+                        };
+                        
+                        // Update stats with user data
+                        this.stats.userId = user.id;
+                        this.stats.userName = user.first_name || 'Игрок';
+                        if (user.last_name) {
+                            this.stats.userName += ` ${user.last_name}`;
+                        }
+                        this.stats.userUsername = user.username ? `@${user.username}` : '';
+                        this.stats.userPhoto = user.photo_url;
+                        this.stats.isPremium = user.is_premium || false;
+                        
+                        // Initialize user if first time
+                        if (!this.stats.registrationDate) {
+                            this.stats.registrationDate = new Date().toISOString();
+                            this.stats.rating = 1000; // Starting rating
+                        }
+                        
+                        this.saveStats();
+                        this.updateProfileDisplay();
+                        
+                        // Initialize Cloud Storage for cross-device sync
+                        this.initCloudStorage();
+                    }
+                    
+                    // Setup back button
+                    tg.BackButton.onClick(this.hideSidebar.bind(this));
+                }
+            }
+
+            initCloudStorage() {
+                if (window.Telegram && window.Telegram.WebApp) {
+                    const tg = window.Telegram.WebApp;
+                    
+                    // Try to load from cloud storage
+                    tg.CloudStorage.getItem('wordle_stats', (err, data) => {
+                        if (!err && data) {
+                            try {
+                                const cloudStats = JSON.parse(data);
+                                // Merge with local stats, prefer cloud for important data
+                                this.stats = {
+                                    ...this.stats,
+                                    ...cloudStats,
+                                    // Keep local progress but use cloud for important stats
+                                    gamesPlayed: Math.max(this.stats.gamesPlayed, cloudStats.gamesPlayed || 0),
+                                    gamesWon: Math.max(this.stats.gamesWon, cloudStats.gamesWon || 0),
+                                    rating: cloudStats.rating || this.stats.rating
+                                };
+                                this.saveStats();
+                                this.updateAllDisplays();
+                            } catch (e) {
+                                console.error('Error parsing cloud storage data:', e);
+                            }
+                        }
+                    });
+                }
+            }
+
+            saveToCloudStorage() {
+                if (window.Telegram && window.Telegram.WebApp) {
+                    const tg = window.Telegram.WebApp;
+                    const importantStats = {
+                        gamesPlayed: this.stats.gamesPlayed,
+                        gamesWon: this.stats.gamesWon,
+                        currentStreak: this.stats.currentStreak,
+                        maxStreak: this.stats.maxStreak,
+                        rating: this.stats.rating,
+                        playerLevel: this.stats.playerLevel,
+                        challengesCreated: this.stats.challengesCreated,
+                        challengesCompleted: this.stats.challengesCompleted
+                    };
+                    
+                    tg.CloudStorage.setItem('wordle_stats', JSON.stringify(importantStats), (err) => {
+                        if (err) {
+                            console.error('Error saving to cloud storage:', err);
+                        }
+                    });
+                }
+            }
+
+            createBoard() {
+                const board = document.getElementById('gameBoard');
+                board.innerHTML = '';
+                
+                for (let i = 0; i < 6; i++) {
+                    const row = document.createElement('div');
+                    row.className = 'board-row';
+                    
+                    for (let j = 0; j < 5; j++) {
+                        const tile = document.createElement('div');
+                        tile.className = 'tile';
+                        tile.setAttribute('data-row', i);
+                        tile.setAttribute('data-col', j);
+                        row.appendChild(tile);
+                    }
+                    
+                    board.appendChild(row);
+                }
+            }
+
+            createKeyboard() {
+                const keyboard = document.getElementById('keyboard');
+                keyboard.innerHTML = '';
+                
+                const layout = [
+                    ['Й', 'Ц', 'У', 'К', 'Е', 'Н', 'Г', 'Ш', 'Щ', 'З', 'Х', 'Ъ'],
+                    ['Ф', 'Ы', 'В', 'А', 'П', 'Р', 'О', 'Л', 'Д', 'Ж', 'Э'],
+                    ['ENTER', 'Я', 'Ч', 'С', 'М', 'И', 'Т', 'Ь', 'Б', 'Ю', '⌫']
+                ];
+                
+                layout.forEach(rowKeys => {
+                    const row = document.createElement('div');
+                    row.className = 'keyboard-row';
+                    
+                    rowKeys.forEach(key => {
+                        const keyElement = document.createElement('button');
+                        keyElement.className = 'key';
+                        keyElement.textContent = key;
+                        keyElement.setAttribute('data-key', key);
+                        
+                        if (key === 'ENTER' || key === '⌫') {
+                            keyElement.classList.add('wide');
+                        }
+                        
+                        keyElement.addEventListener('click', () => this.handleInput(key));
+                        keyElement.addEventListener('touchstart', (e) => {
+                            e.preventDefault();
+                            this.handleInput(key);
+                        });
+                        
+                        row.appendChild(keyElement);
+                    });
+                    
+                    keyboard.appendChild(row);
+                });
+            }
+
+            setupEventListeners() {
+                // Physical keyboard
+                document.addEventListener('keydown', (e) => {
+                    if (this.isGameOver) return;
+                    
+                    if (e.key === 'Enter') {
+                        this.handleInput('ENTER');
+                    } else if (e.key === 'Backspace') {
+                        this.handleInput('⌫');
+                    } else if (/^[А-Яа-я]$/.test(e.key)) {
+                        this.handleInput(e.key.toUpperCase());
+                    }
+                });
+
+                // Menu and navigation
+                document.getElementById('menuBtn').addEventListener('click', () => {
+                    this.toggleSidebar();
+                });
+
+                document.getElementById('statsBtn').addEventListener('click', () => {
+                    this.showStatsModal();
+                });
+
+                document.getElementById('closeMenuBtn').addEventListener('click', () => {
+                    this.toggleSidebar();
+                });
+
+                document.getElementById('startGameBtn').addEventListener('click', () => {
+                    this.hideStartScreen();
+                });
+
+                document.getElementById('howToPlayBtn').addEventListener('click', () => {
+                    this.showHowToPlayModal();
+                });
+
+                document.getElementById('howToPlayMenuBtn').addEventListener('click', () => {
+                    this.hideSidebar();
+                    this.showHowToPlayModal();
+                });
+
+                document.getElementById('newGameBtn').addEventListener('click', () => {
+                    this.hideSidebar();
+                    this.newGame();
+                });
+
+                document.getElementById('themeBtn').addEventListener('click', () => {
+                    this.toggleTheme();
+                });
+
+                document.getElementById('dailyChallengeBtn').addEventListener('click', () => {
+                    this.challengeWord = null;
+                    this.challengeId = null;
+                    document.getElementById('friendIndicator').style.display = 'none';
+                    document.getElementById('dailyBadge').style.display = 'flex';
+                    this.hideSidebar();
+                    this.newGame();
+                });
+
+                // Modals
+                document.getElementById('closeHowToPlayBtn').addEventListener('click', () => {
+                    this.hideHowToPlayModal();
+                });
+
+                document.getElementById('closeStatsBtn').addEventListener('click', () => {
+                    this.hideStatsModal();
+                });
+
+                document.getElementById('shareStatsBtn').addEventListener('click', () => {
+                    this.shareResult();
+                });
+
+                document.getElementById('closeMessageBtn').addEventListener('click', () => {
+                    this.hideMessageModal();
+                });
+
+                // Navigation tabs
+                document.querySelectorAll('.nav-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const tabId = item.getAttribute('data-tab');
+                        this.switchTab(tabId);
+                    });
+                });
+
+                // Challenge functionality
+                document.getElementById('createChallengeBtn').addEventListener('click', () => {
+                    this.createChallenge();
+                });
+
+                document.getElementById('copyChallengeLinkBtn').addEventListener('click', () => {
+                    this.copyChallengeLink();
+                });
+
+                document.getElementById('shareChallengeTelegramBtn').addEventListener('click', () => {
+                    this.shareChallengeTelegram();
+                });
+
+                document.getElementById('createAnotherChallengeBtn').addEventListener('click', () => {
+                    document.getElementById('challengeCreatedModal').classList.remove('active');
+                });
+
+                document.getElementById('closeChallengeModalBtn').addEventListener('click', () => {
+                    document.getElementById('challengeCreatedModal').classList.remove('active');
+                });
+
+                document.getElementById('inviteFriendsBtn').addEventListener('click', () => {
+                    this.inviteFriends();
+                });
+
+                document.getElementById('friendWordInput').addEventListener('input', (e) => {
+                    e.target.value = e.target.value.toUpperCase().replace(/[^А-Я]/g, '');
+                });
+
+                // Leaderboard filters
+                document.querySelectorAll('.filter-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                        e.target.classList.add('active');
+                        this.filterLeaderboard(e.target.dataset.period);
+                    });
+                });
+
+                // Close modals on overlay click
+                document.querySelectorAll('.modal-overlay').forEach(modal => {
+                    modal.addEventListener('click', (e) => {
+                        if (e.target === modal) {
+                            modal.classList.remove('active');
+                        }
+                    });
+                });
+            }
+
+            createChallenge() {
+                const input = document.getElementById('challengeWordInput');
+                const word = input.value.toUpperCase().trim();
+
+                // Validation - any 5 Cyrillic letters
+                if (word.length !== 5) {
+                    this.showNotification('Слово должно состоять из 5 букв!', 'error');
+                    return;
+                }
+
+                if (!/^[А-ЯЁ]+$/.test(word)) {
+                    this.showNotification('Используйте только русские буквы!', 'error');
+                    return;
+                }
+
+                // Create unique challenge
+                const challengeId = this.generateChallengeId();
+                this.saveChallenge(challengeId, word);
+                
+                // Create shareable link with Telegram deep linking
+                const challengeLink = this.generateChallengeLink(challengeId);
+
+                // Show success modal
+                document.getElementById('challengeLink').value = challengeLink;
+                document.getElementById('challengeCreatedModal').classList.add('active');
+
+                // Update statistics
+                this.stats.challengesCreated = (this.stats.challengesCreated || 0) + 1;
+                this.stats.rating += 5; // Small rating boost for creating challenges
+                this.saveStats();
+                this.updateProfileDisplay();
+                
+                // Clear input
+                input.value = '';
+                
+                this.loadChallenges(); // Refresh challenges list
+            }
+
+            generateChallengeId() {
+                return 'ch_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+            }
+
+            generateChallengeLink(challengeId) {
+                if (window.Telegram && window.Telegram.WebApp) {
+                    // Use Telegram deep linking for better integration
+                    const botUsername = 'wordle_challenge_bot'; // Replace with actual bot username
+                    return `https://t.me/${botUsername}/wordle?startapp=challenge_${challengeId}`;
+                } else {
+                    // Fallback for browser
+                    return `${window.location.origin}${window.location.pathname}?challenge=${challengeId}`;
+                }
+            }
+
+            saveChallenge(challengeId, word) {
+                const challenges = JSON.parse(localStorage.getItem('wordleChallenges') || '{}');
+                challenges[challengeId] = {
+                    word: word,
+                    createdBy: this.userData,
+                    createdAt: new Date().toISOString(),
+                    attempts: [],
+                    completedBy: []
+                };
+                localStorage.setItem('wordleChallenges', JSON.stringify(challenges));
+                return challenges[challengeId];
+            }
+
+            checkChallenge() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const challengeId = urlParams.get('challenge');
+                
+                if (challengeId) {
+                    const challenges = JSON.parse(localStorage.getItem('wordleChallenges') || '{}');
+                    const challengeData = challenges[challengeId];
+                    
+                    if (challengeData) {
+                        this.challengeWord = challengeData.word;
+                        this.challengeId = challengeId;
+                        
+                        // Show friend indicator
+                        document.getElementById('friendIndicator').style.display = 'flex';
+                        document.getElementById('dailyBadge').style.display = 'none';
+                        
+                        // Record attempt
+                        this.recordChallengeAttempt(challengeId);
+                        
+                        this.showNotification(`Вы приняли вызов от ${challengeData.createdBy.firstName || 'друга'}!`, 'success');
+                    }
+                }
+            }
+
+            recordChallengeAttempt(challengeId) {
+                const challenges = JSON.parse(localStorage.getItem('wordleChallenges') || '{}');
+                if (challenges[challengeId]) {
+                    const challenge = challenges[challengeId];
+                    const userAttempt = {
+                        userId: this.userData.id,
+                        userName: this.userData.firstName,
+                        userUsername: this.userData.username,
+                        attemptedAt: new Date().toISOString()
+                    };
+                    
+                    // Check if user already attempted
+                    const existingAttempt = challenge.attempts.find(a => a.userId === this.userData.id);
+                    if (!existingAttempt) {
+                        challenge.attempts.push(userAttempt);
+                        localStorage.setItem('wordleChallenges', JSON.stringify(challenges));
+                    }
+                }
+            }
+
+            completeChallenge(attempts) {
+                if (!this.challengeId) return;
+                
+                const challenges = JSON.parse(localStorage.getItem('wordleChallenges') || '{}');
+                if (challenges[this.challengeId]) {
+                    const challenge = challenges[this.challengeId];
+                    const completion = {
+                        userId: this.userData.id,
+                        userName: this.userData.firstName,
+                        userUsername: this.userData.username,
+                        attempts: attempts,
+                        completedAt: new Date().toISOString()
+                    };
+                    
+                    // Check if user already completed
+                    const existingCompletion = challenge.completedBy.find(c => c.userId === this.userData.id);
+                    if (!existingCompletion) {
+                        challenge.completedBy.push(completion);
+                        localStorage.setItem('wordleChallenges', JSON.stringify(challenges));
+                        
+                        // Update user stats
+                        this.stats.challengesCompleted = (this.stats.challengesCompleted || 0) + 1;
+                        this.stats.rating += 10; // Rating boost for completing challenges
+                        this.saveStats();
+                        
+                        // Notify challenge creator if possible
+                        this.notifyChallengeCreator(this.challengeId, completion);
+                    }
+                }
+            }
+
+            notifyChallengeCreator(challengeId, completion) {
+                // In a real app, this would send a notification via Telegram Bot API
+                console.log(`User ${completion.userName} completed challenge ${challengeId} in ${completion.attempts} attempts`);
+                
+                // For demo purposes, we'll just show a notification
+                this.showNotification(`🎉 ${completion.userName} отгадал ваш вызов за ${completion.attempts} попыток!`, 'success');
+            }
+
+            loadChallenges() {
+                const challenges = JSON.parse(localStorage.getItem('wordleChallenges') || '{}');
+                const userChallenges = Object.entries(challenges)
+                    .filter(([id, challenge]) => challenge.createdBy.id === this.userData.id)
+                    .sort((a, b) => new Date(b[1].createdAt) - new Date(a[1].createdAt));
+                
+                const challengesList = document.getElementById('challengesList');
+                challengesList.innerHTML = '';
+                
+                if (userChallenges.length === 0) {
+                    challengesList.innerHTML = '<p style="text-align: center; color: var(--text-muted);">У вас пока нет созданных вызовов</p>';
+                    return;
+                }
+                
+                userChallenges.forEach(([id, challenge]) => {
+                    const challengeElement = document.createElement('div');
+                    challengeElement.className = 'challenge-item';
+                    challengeElement.innerHTML = `
+                        <div class="challenge-info">
+                            <div class="challenge-word">${challenge.word}</div>
+                            <div class="challenge-stats">
+                                ${challenge.attempts.length} попыток • 
+                                ${challenge.completedBy.length} успешных
+                            </div>
+                        </div>
+                        <div class="challenge-actions">
+                            <button class="friend-action share-challenge" data-id="${id}">
+                                📤
+                            </button>
+                            <button class="friend-action delete-challenge" data-id="${id}">
+                                🗑️
+                            </button>
+                        </div>
+                    `;
+                    challengesList.appendChild(challengeElement);
+                });
+                
+                // Add event listeners
+                document.querySelectorAll('.share-challenge').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const challengeId = e.target.closest('button').dataset.id;
+                        this.shareChallenge(challengeId);
+                    });
+                });
+                
+                document.querySelectorAll('.delete-challenge').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const challengeId = e.target.closest('button').dataset.id;
+                        this.deleteChallenge(challengeId);
+                    });
+                });
+            }
+
+            shareChallenge(challengeId) {
+                const challengeLink = this.generateChallengeLink(challengeId);
+                const message = `Привет! Попробуй отгадать мое слово в Wordle! 🎯\n\n${challengeLink}`;
+                
+                if (window.Telegram && window.Telegram.WebApp) {
+                    window.Telegram.WebApp.shareMessage(message);
+                } else {
+                    navigator.clipboard.writeText(message).then(() => {
+                        this.showNotification('Ссылка скопирована!', 'success');
+                    });
+                }
+            }
+
+            deleteChallenge(challengeId) {
+                const challenges = JSON.parse(localStorage.getItem('wordleChallenges') || '{}');
+                delete challenges[challengeId];
+                localStorage.setItem('wordleChallenges', JSON.stringify(challenges));
+                this.loadChallenges();
+                this.showNotification('Вызов удален', 'success');
+            }
+
+            loadFriends() {
+                // In a real app, this would fetch from Telegram API
+                // For demo, we'll use mock data
+                this.friends = [
+                    {
+                        id: 2,
+                        firstName: "Анна",
+                        username: "anna",
+                        photoUrl: null,
+                        isOnline: true,
+                        isPlaying: false,
+                        rating: 1250
+                    },
+                    {
+                        id: 3,
+                        firstName: "Михаил",
+                        username: "mikhail",
+                        photoUrl: null,
+                        isOnline: true,
+                        isPlaying: true,
+                        rating: 1100
+                    },
+                    {
+                        id: 4,
+                        firstName: "Екатерина", 
+                        username: "ekaterina",
+                        photoUrl: null,
+                        isOnline: false,
+                        isPlaying: false,
+                        rating: 1350
+                    }
+                ];
+                
+                this.updateFriendsDisplay();
+            }
+
+            updateFriendsDisplay() {
+                const friendsList = document.getElementById('friendsList');
+                const friendsCount = document.getElementById('friendsCount');
+                const friendsPlayed = document.getElementById('friendsPlayed');
+                
+                friendsCount.textContent = this.friends.length;
+                friendsPlayed.textContent = this.friends.filter(f => f.isPlaying).length;
+                
+                friendsList.innerHTML = '';
+                
+                this.friends.forEach(friend => {
+                    const friendElement = document.createElement('div');
+                    friendElement.className = 'friend-item';
+                    
+                    const statusClass = friend.isPlaying ? 'status-playing' : 
+                                      friend.isOnline ? 'status-online' : '';
+                    const statusText = friend.isPlaying ? 'Играет сейчас' : 
+                                     friend.isOnline ? 'В сети' : 'Не в сети';
+                    
+                    friendElement.innerHTML = `
+                        <div class="friend-avatar">
+                            ${friend.photoUrl ? 
+                                `<img src="${friend.photoUrl}" alt="${friend.firstName}" style="width:100%;height:100%;border-radius:50%;">` : 
+                                friend.firstName.charAt(0)
+                            }
+                        </div>
+                        <div class="friend-info">
+                            <div class="friend-name">${friend.firstName}</div>
+                            <div class="friend-status ${statusClass}">${statusText} • Рейтинг: ${friend.rating}</div>
+                        </div>
+                        <button class="friend-action challenge-friend" data-id="${friend.id}">
+                            Вызвать
+                        </button>
+                    `;
+                    friendsList.appendChild(friendElement);
+                });
+                
+                // Add challenge event listeners
+                document.querySelectorAll('.challenge-friend').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const friendId = e.target.closest('button').dataset.id;
+                        this.challengeFriend(friendId);
+                    });
+                });
+            }
+
+            challengeFriend(friendId) {
+                const friend = this.friends.find(f => f.id == friendId);
+                if (friend) {
+                    // Create a special challenge for this friend
+                    const challengeId = this.generateChallengeId();
+                    const randomWord = this.generateRandomWord();
+                    this.saveChallenge(challengeId, randomWord);
+                    
+                    const challengeLink = this.generateChallengeLink(challengeId);
+                    const message = `Привет, ${friend.firstName}! 🎯\n\nЯ вызываю тебя на дуэль в Wordle! Сможешь отгадать мое слово?\n\n${challengeLink}`;
+                    
+                    if (window.Telegram && window.Telegram.WebApp) {
+                        window.Telegram.WebApp.shareMessage(message);
+                    } else {
+                        navigator.clipboard.writeText(message).then(() => {
+                            this.showNotification(`Вызов для ${friend.firstName} скопирован!`, 'success');
+                        });
+                    }
+                }
+            }
+
+            generateRandomWord() {
+                const letters = 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ';
+                let word = '';
+                for (let i = 0; i < 5; i++) {
+                    word += letters[Math.floor(Math.random() * letters.length)];
+                }
+                return word;
+            }
+
+            loadLeaderboard() {
+                // Mock leaderboard data - in real app would come from server
+                this.leaderboard = [
+                    { id: 1, firstName: "Алексей", username: "alexey", rating: 1500, gamesWon: 42, isPremium: true },
+                    { id: 2, firstName: "Мария", username: "maria", rating: 1450, gamesWon: 38, isPremium: false },
+                    { id: 3, firstName: "Дмитрий", username: "dmitry", rating: 1420, gamesWon: 35, isPremium: true },
+                    { id: this.userData.id, firstName: this.userData.firstName, username: this.userData.username, 
+                      rating: this.stats.rating, gamesWon: this.stats.gamesWon, isPremium: this.userData.isPremium },
+                    { id: 4, firstName: "Ольга", username: "olga", rating: 1380, gamesWon: 32, isPremium: false },
+                    { id: 5, firstName: "Сергей", username: "sergey", rating: 1350, gamesWon: 30, isPremium: false }
+                ].sort((a, b) => b.rating - a.rating);
+                
+                this.updateLeaderboardDisplay();
+            }
+
+            updateLeaderboardDisplay() {
+                const leaderboardList = document.getElementById('leaderboardList');
+                leaderboardList.innerHTML = '';
+                
+                this.leaderboard.forEach((player, index) => {
+                    const isCurrentUser = player.id === this.userData.id;
+                    const rankClass = index < 3 ? `rank-${index + 1}` : '';
+                    
+                    const playerElement = document.createElement('div');
+                    playerElement.className = `leaderboard-item ${isCurrentUser ? 'current-user' : ''}`;
+                    playerElement.innerHTML = `
+                        <div class="leaderboard-rank ${rankClass}">${index + 1}</div>
+                        <div class="leaderboard-avatar">
+                            ${player.firstName.charAt(0)}
+                        </div>
+                        <div class="leaderboard-info">
+                            <div class="leaderboard-name">
+                                ${player.firstName}
+                                ${player.isPremium ? '<span class="premium-badge">PREMIUM</span>' : ''}
+                            </div>
+                            <div class="leaderboard-stats">
+                                ${player.gamesWon} побед • Уровень ${Math.floor(player.rating / 100)}
+                            </div>
+                        </div>
+                        <div class="leaderboard-rating">${player.rating}</div>
+                    `;
+                    leaderboardList.appendChild(playerElement);
+                });
+            }
+
+            toggleSidebar() {
+                const sidebar = document.getElementById('sidebarMenu');
+                sidebar.classList.toggle('active');
+                
+                // Show/hide Telegram back button
+                if (window.Telegram && window.Telegram.WebApp) {
+                    if (sidebar.classList.contains('active')) {
+                        window.Telegram.WebApp.BackButton.show();
+                    } else {
+                        window.Telegram.WebApp.BackButton.hide();
+                    }
+                }
+            }
+
+            hideSidebar() {
+                const sidebar = document.getElementById('sidebarMenu');
+                sidebar.classList.remove('active');
+                
+                if (window.Telegram && window.Telegram.WebApp) {
+                    window.Telegram.WebApp.BackButton.hide();
+                }
+            }
+
+            switchTab(tabId) {
+                // Update nav items
+                document.querySelectorAll('.nav-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                document.querySelector(`.nav-item[data-tab="${tabId}"]`).classList.add('active');
+                
+                // Update tab content
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+                document.getElementById(`${tabId}-tab`).classList.add('active');
+                
+                // Update specific tab data
+                if (tabId === 'profile') {
+                    this.updateProfileDisplay();
+                } else if (tabId === 'challenges') {
+                    this.loadChallenges();
+                } else if (tabId === 'leaderboard') {
+                    this.updateLeaderboardDisplay();
+                } else if (tabId === 'friends') {
+                    this.updateFriendsDisplay();
+                }
+            }
+
+            hideStartScreen() {
+                document.getElementById('startScreen').classList.remove('active');
+            }
+
+            showHowToPlayModal() {
+                document.getElementById('howToPlayModal').classList.add('active');
+            }
+
+            hideHowToPlayModal() {
+                document.getElementById('howToPlayModal').classList.remove('active');
+            }
+
+            showStatsModal() {
+                this.updateStatsDisplay();
+                document.getElementById('statsModal').classList.add('active');
+            }
+
+            hideStatsModal() {
+                document.getElementById('statsModal').classList.remove('active');
+            }
+
+            showMessageModal() {
+                document.getElementById('messageModal').classList.add('active');
+            }
+
+            hideMessageModal() {
+                document.getElementById('messageModal').classList.remove('active');
+            }
+
+            newGame() {
+                this.currentRow = 0;
+                this.currentTile = 0;
+                this.isGameOver = false;
+                this.gameState = [];
+                
+                // Choose target word
+                if (this.challengeWord) {
+                    this.targetWord = this.challengeWord;
+                } else {
+                    // 80% chance for daily word, 20% for random
+                    this.targetWord = Math.random() < 0.8 ? this.dailyWord : 
+                                    this.words[Math.floor(Math.random() * this.words.length)];
+                }
+                
+                console.log('Target word:', this.targetWord);
+                
+                // Clear board
+                document.querySelectorAll('.tile').forEach(tile => {
+                    tile.textContent = '';
+                    tile.className = 'tile';
+                });
+                
+                // Clear keyboard colors
+                document.querySelectorAll('.key').forEach(key => {
+                    if (!key.classList.contains('wide')) {
+                        key.classList.remove('correct', 'present', 'absent');
+                    }
+                });
+                
+                this.hideMessageModal();
+                this.hideStartScreen();
+            }
+
+            handleInput(key) {
+                if (this.isGameOver) return;
+                
+                if (key === 'ENTER') {
+                    this.submitGuess();
+                } else if (key === '⌫') {
+                    this.deleteLetter();
+                } else if (this.currentTile < 5 && this.currentRow < 6) {
+                    this.addLetter(key);
+                }
+            }
+
+            addLetter(letter) {
+                const row = document.querySelectorAll('.board-row')[this.currentRow];
+                const tile = row.children[this.currentTile];
+                
+                tile.textContent = letter;
+                tile.classList.add('filled');
+                
+                // Add pop animation
+                tile.style.animation = 'popIn 0.1s ease';
+                setTimeout(() => {
+                    tile.style.animation = '';
+                }, 100);
+                
+                this.currentTile++;
+            }
+
+            deleteLetter() {
+                if (this.currentTile > 0) {
+                    this.currentTile--;
+                    const row = document.querySelectorAll('.board-row')[this.currentRow];
+                    const tile = row.children[this.currentTile];
+                    tile.textContent = '';
+                    tile.classList.remove('filled');
+                }
+            }
+
+            submitGuess() {
+                if (this.currentTile !== 5) {
+                    this.shakeRow();
+                    this.showNotification('Введите 5 букв!', 'error');
+                    return;
+                }
+                
+                const row = document.querySelectorAll('.board-row')[this.currentRow];
+                let guess = '';
+                
+                for (let i = 0; i < 5; i++) {
+                    guess += row.children[i].textContent;
+                }
+                
+                // Validate word exists (only for non-challenge games)
+                if (!this.challengeWord && !this.words.includes(guess)) {
+                    this.shakeRow();
+                    this.showNotification('Слова нет в словаре!', 'error');
+                    return;
+                }
+                
+                const result = this.checkGuess(guess);
+                this.updateTiles(result);
+                this.updateKeyboard(guess, result);
+                
+                this.gameState.push({ guess, result });
+                
+                if (guess === this.targetWord) {
+                    this.handleWin();
+                } else if (this.currentRow === 5) {
+                    this.handleLoss();
+                } else {
+                    this.currentRow++;
+                    this.currentTile = 0;
+                }
+            }
+
+            checkGuess(guess) {
+                const result = new Array(5).fill('absent');
+                const targetLetters = this.targetWord.split('');
+                const guessLetters = guess.split('');
+                
+                // First pass: mark correct letters
+                for (let i = 0; i < 5; i++) {
+                    if (guessLetters[i] === targetLetters[i]) {
+                        result[i] = 'correct';
+                        targetLetters[i] = null;
+                        guessLetters[i] = null;
+                    }
+                }
+                
+                // Second pass: mark present letters
+                for (let i = 0; i < 5; i++) {
+                    if (guessLetters[i] === null) continue;
+                    
+                    const index = targetLetters.indexOf(guessLetters[i]);
+                    if (index !== -1) {
+                        result[i] = 'present';
+                        targetLetters[index] = null;
+                    }
+                }
+                
+                return result;
+            }
+
+            updateTiles(result) {
+                const row = document.querySelectorAll('.board-row')[this.currentRow];
+                
+                for (let i = 0; i < 5; i++) {
+                    const tile = row.children[i];
+                    setTimeout(() => {
+                        tile.classList.add(result[i]);
+                    }, i * 200);
+                }
+            }
+
+            updateKeyboard(guess, result) {
+                const letters = guess.split('');
+                
+                for (let i = 0; i < 5; i++) {
+                    const key = document.querySelector(`.key[data-key="${letters[i]}"]`);
+                    
+                    if (key) {
+                        if (result[i] === 'correct') {
+                            key.classList.remove('present', 'absent');
+                            key.classList.add('correct');
+                        } else if (result[i] === 'present' && !key.classList.contains('correct')) {
+                            key.classList.remove('absent');
+                            key.classList.add('present');
+                        } else if (result[i] === 'absent' && 
+                                  !key.classList.contains('correct') && 
+                                  !key.classList.contains('present')) {
+                            key.classList.add('absent');
+                        }
+                    }
+                }
+            }
+
+            shakeRow() {
+                const row = document.querySelectorAll('.board-row')[this.currentRow];
+                row.classList.add('shake');
+                
+                setTimeout(() => {
+                    row.classList.remove('shake');
+                }, 500);
+            }
+
+            handleWin() {
+                this.isGameOver = true;
+                const attempts = this.currentRow + 1;
+                this.updateStats(true, attempts);
+                
+                // If it was a challenge, record completion
+                if (this.challengeId) {
+                    this.completeChallenge(attempts);
+                }
+                
+                setTimeout(() => {
+                    this.showWinMessage();
+                }, 1500);
+            }
+
+            handleLoss() {
+                this.isGameOver = true;
+                this.updateStats(false);
+                
+                setTimeout(() => {
+                    this.showLossMessage();
+                }, 1500);
+            }
+
+            showWinMessage() {
+                document.getElementById('messageTitle').textContent = 'Поздравляем! 🎉';
+                document.getElementById('messageText').textContent = `Вы угадали слово за ${this.currentRow + 1} попыток!`;
+                document.getElementById('messageWord').textContent = this.targetWord;
+                
+                this.prepareShareOptions();
+                this.showMessageModal();
+            }
+
+            showLossMessage() {
+                document.getElementById('messageTitle').textContent = 'Игра окончена';
+                document.getElementById('messageText').textContent = 'К сожалению, вы не угадали слово.';
+                document.getElementById('messageWord').textContent = this.targetWord;
+                
+                this.prepareShareOptions();
+                this.showMessageModal();
+            }
+
+            prepareShareOptions() {
+                const shareGrid = document.getElementById('shareGrid');
+                shareGrid.innerHTML = '';
+                
+                const shareOptions = [
+                    { icon: '📱', text: 'Telegram', action: () => this.shareResult() },
+                    { icon: '📋', text: 'Копировать', action: () => this.copyResult() },
+                    { icon: '🔗', text: 'Ссылка', action: () => this.copyGameLink() }
+                ];
+                
+                shareOptions.forEach(option => {
+                    const shareOption = document.createElement('button');
+                    shareOption.className = 'share-option';
+                    shareOption.innerHTML = `
+                        <div class="share-icon">${option.icon}</div>
+                        <div class="share-text">${option.text}</div>
+                    `;
+                    shareOption.addEventListener('click', option.action);
+                    shareGrid.appendChild(shareOption);
+                });
+                
+                document.getElementById('gameResultShare').style.display = 'block';
+            }
+
+            updateStats(isWin, attempts = null) {
+                this.stats.gamesPlayed++;
+                
+                if (isWin) {
+                    this.stats.gamesWon++;
+                    this.stats.currentStreak++;
+                    this.stats.maxStreak = Math.max(this.stats.maxStreak, this.stats.currentStreak);
+                    
+                    // Calculate rating change
+                    const ratingChange = this.calculateRatingChange(attempts);
+                    this.stats.rating += ratingChange;
+                    
+                    if (attempts >= 1 && attempts <= 6) {
+                        this.stats.distribution[attempts - 1]++;
+                    }
+                    
+                    // Update player level based on rating
+                    this.updatePlayerLevel();
+                } else {
+                    this.stats.currentStreak = 0;
+                    this.stats.rating = Math.max(0, this.stats.rating - 10); // Small rating loss for loss
+                }
+                
+                this.saveStats();
+                this.saveToCloudStorage();
+                this.updateAllDisplays();
+            }
+
+            calculateRatingChange(attempts) {
+                // Better attempts give more rating
+                const basePoints = 15;
+                const attemptBonus = (6 - attempts) * 3; // 15, 12, 9, 6, 3, 0
+                return basePoints + attemptBonus;
+            }
+
+            updatePlayerLevel() {
+                const newLevel = Math.floor(this.stats.rating / 100);
+                if (newLevel > this.stats.playerLevel) {
+                    this.stats.playerLevel = newLevel;
+                    this.saveStats();
+                    this.showNotification(`Новый уровень! Уровень ${newLevel}`, 'success');
+                }
+            }
+
+            updateAllDisplays() {
+                this.updateStatsDisplay();
+                this.updateProfileDisplay();
+                this.updateLeaderboardDisplay();
+                this.updateFriendsDisplay();
+            }
+
+            updateStatsDisplay() {
+                document.getElementById('gamesPlayed').textContent = this.stats.gamesPlayed;
+                
+                const winRate = this.stats.gamesPlayed > 0 
+                    ? Math.round((this.stats.gamesWon / this.stats.gamesPlayed) * 100)
+                    : 0;
+                document.getElementById('winRate').textContent = `${winRate}%`;
+                
+                document.getElementById('currentStreak').textContent = this.stats.currentStreak;
+                document.getElementById('maxStreak').textContent = this.stats.maxStreak;
+                
+                // Update distribution
+                this.updateDistributionDisplay();
+            }
+
+            updateDistributionDisplay() {
+                const distributionBars = document.getElementById('distributionBars');
+                distributionBars.innerHTML = '';
+                
+                let maxCount = Math.max(...this.stats.distribution);
+                if (maxCount === 0) maxCount = 1;
+                
+                for (let i = 0; i < 6; i++) {
+                    const count = this.stats.distribution[i];
+                    const percentage = Math.round((count / maxCount) * 100);
+                    
+                    const bar = document.createElement('div');
+                    bar.className = 'distribution-bar';
+                    bar.innerHTML = `
+                        <div class="distribution-label">${i + 1}</div>
+                        <div class="distribution-progress">
+                            <div class="distribution-fill" style="width: ${percentage}%">
+                                ${count > 0 ? count : ''}
+                            </div>
+                        </div>
+                    `;
+                    distributionBars.appendChild(bar);
+                }
+            }
+
+            updateProfileDisplay() {
+                document.getElementById('profileName').textContent = this.stats.userName;
+                document.getElementById('profileUsername').textContent = this.stats.userUsername || 'Не указан';
+                document.getElementById('profileLevel').textContent = this.stats.playerLevel;
+                document.getElementById('profileGames').textContent = this.stats.gamesPlayed;
+                document.getElementById('profileRating').textContent = this.stats.rating;
+                document.getElementById('profileWins').textContent = this.stats.gamesWon;
+                document.getElementById('profileStreak').textContent = this.stats.currentStreak;
+                document.getElementById('profileChallenges').textContent = this.stats.challengesCreated || 0;
+                document.getElementById('profileCompleted').textContent = this.stats.challengesCompleted || 0;
+                
+                // Update avatar
+                const avatar = document.getElementById('profileAvatar');
+                const avatarImg = document.getElementById('profileAvatarImg');
+                if (this.stats.userPhoto) {
+                    avatarImg.src = this.stats.userPhoto;
+                    avatarImg.style.display = 'block';
+                    avatar.innerHTML = '';
+                    avatar.appendChild(avatarImg);
+                } else {
+                    avatarImg.style.display = 'none';
+                    this.updateAvatar();
+                }
+                
+                // Update level progress
+                this.updateLevelProgress();
+            }
+
+            updateAvatar() {
+                const avatar = document.getElementById('profileAvatar');
+                const level = this.stats.playerLevel;
+                
+                const avatars = {
+                    1: '👤',    // Beginner
+                    5: '⭐',    // Star
+                    10: '🏆',   // Trophy
+                    15: '👑',   // Crown
+                    20: '💎'    // Diamond
+                };
+                
+                // Find the appropriate avatar for current level
+                let selectedAvatar = '👤';
+                for (const [minLevel, avatarChar] of Object.entries(avatars)) {
+                    if (level >= parseInt(minLevel)) {
+                        selectedAvatar = avatarChar;
+                    }
+                }
+                
+                avatar.textContent = selectedAvatar;
+            }
+
+            updateLevelProgress() {
+                const currentLevelRating = this.stats.rating % 100;
+                const progressPercentage = currentLevelRating;
+                
+                document.getElementById('levelProgressFill').style.width = `${progressPercentage}%`;
+                document.getElementById('levelProgressText').textContent = `${currentLevelRating}/100`;
+            }
+
+            copyChallengeLink() {
+                const linkInput = document.getElementById('challengeLink');
+                navigator.clipboard.writeText(linkInput.value).then(() => {
+                    this.showNotification('Ссылка скопирована!', 'success');
+                });
+            }
+
+            shareChallengeTelegram() {
+                const link = document.getElementById('challengeLink').value;
+                const message = `Привет! Попробуй отгадать мое слово в Wordle! 🎯\n\n${link}`;
+                
+                if (window.Telegram && window.Telegram.WebApp) {
+                    window.Telegram.WebApp.shareMessage(message);
+                } else {
+                    this.copyChallengeLink();
+                }
+            }
+
+            inviteFriends() {
+                const message = `Присоединяйся к Wordle в Telegram! 🎮\n\nУгадывай слова, соревнуйся с друзьями и создавай свои вызовы!\n\n${window.location.origin}${window.location.pathname}`;
+                
+                if (window.Telegram && window.Telegram.WebApp) {
+                    window.Telegram.WebApp.shareMessage(message);
+                } else {
+                    navigator.clipboard.writeText(message).then(() => {
+                        this.showNotification('Приглашение скопировано!', 'success');
+                    });
+                }
+                
+                this.stats.invitesSent = (this.stats.invitesSent || 0) + 1;
+                this.saveStats();
+            }
+
+            filterLeaderboard(period) {
+                // In a real app, this would filter data from server
+                // For demo, we'll just re-sort the existing data
+                this.leaderboard.sort((a, b) => b.rating - a.rating);
+                this.updateLeaderboardDisplay();
+            }
+
+            shareResult() {
+                let shareText = `Wordle Challenge\nРезультат: ${this.stats.gamesPlayed} игра\n`;
+                
+                if (this.gameState.length > 0) {
+                    const isWin = this.gameState[this.gameState.length - 1].guess === this.targetWord;
+                    shareText += isWin ? `${this.gameState.length}/6\n\n` : 'X/6\n\n';
+                    
+                    this.gameState.forEach(({ result }) => {
+                        result.forEach(res => {
+                            shareText += res === 'correct' ? '🟩' : res === 'present' ? '🟨' : '⬜';
+                        });
+                        shareText += '\n';
+                    });
+                }
+                
+                this.shareToTelegram(shareText);
+            }
+
+            copyResult() {
+                let shareText = `Wordle Challenge\nРезультат: ${this.stats.gamesPlayed} игра\n`;
+                
+                if (this.gameState.length > 0) {
+                    const isWin = this.gameState[this.gameState.length - 1].guess === this.targetWord;
+                    shareText += isWin ? `${this.gameState.length}/6\n\n` : 'X/6\n\n';
+                    
+                    this.gameState.forEach(({ result }) => {
+                        result.forEach(res => {
+                            shareText += res === 'correct' ? '🟩' : res === 'present' ? '🟨' : '⬜';
+                        });
+                        shareText += '\n';
+                    });
+                }
+                
+                navigator.clipboard.writeText(shareText).then(() => {
+                    this.showNotification('Результат скопирован!', 'success');
+                });
+            }
+
+            copyGameLink() {
+                const link = window.location.origin + window.location.pathname;
+                navigator.clipboard.writeText(link).then(() => {
+                    this.showNotification('Ссылка на игру скопирована!', 'success');
+                });
+            }
+
+            shareToTelegram(text) {
+                if (window.Telegram && window.Telegram.WebApp) {
+                    window.Telegram.WebApp.shareMessage(text);
+                } else {
+                    // Fallback for browser
+                    if (navigator.share) {
+                        navigator.share({
+                            title: 'Wordle Result',
+                            text: text
+                        });
+                    } else {
+                        this.copyResult();
+                    }
+                }
+            }
+
+            toggleTheme() {
+                if (this.isDarkTheme) {
+                    document.body.classList.add('light-theme');
+                } else {
+                    document.body.classList.remove('light-theme');
+                }
+                this.isDarkTheme = !this.isDarkTheme;
+                this.showNotification(`Тема изменена на ${this.isDarkTheme ? 'тёмную' : 'светлую'}`, 'success');
+            }
+
+            setLightTheme() {
+                document.body.classList.add('light-theme');
+                this.isDarkTheme = false;
+            }
+
+            showNotification(message, type = 'success') {
+                const notification = document.getElementById('notification');
+                notification.textContent = message;
+                notification.className = `notification ${type} show`;
+                
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                }, 3000);
+            }
+
+            loadStats() {
+                const saved = localStorage.getItem('wordleStats');
+                const defaultStats = {
+                    gamesPlayed: 0,
+                    gamesWon: 0,
+                    currentStreak: 0,
+                    maxStreak: 0,
+                    distribution: [0, 0, 0, 0, 0, 0],
+                    playerLevel: 1,
+                    registrationDate: new Date().toISOString(),
+                    userName: 'Игрок',
+                    userUsername: '',
+                    userId: null,
+                    userPhoto: null,
+                    isPremium: false,
+                    rating: 1000,
+                    challengesCreated: 0,
+                    challengesCompleted: 0,
+                    invitesSent: 0
+                };
+                return saved ? { ...defaultStats, ...JSON.parse(saved) } : defaultStats;
+            }
+
+            saveStats() {
+                localStorage.setItem('wordleStats', JSON.stringify(this.stats));
+            }
+        }
+
+        // Initialize game when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            new WordleGame();
+        });
+
+        // Prevent zoom on double tap
+        document.addEventListener('touchend', (e) => {
+            if (e.touches && e.touches.length < 2) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+    </script>
+</body>
+</html>
